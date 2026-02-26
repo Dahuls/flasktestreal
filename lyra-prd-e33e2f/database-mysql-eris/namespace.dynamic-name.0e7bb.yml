@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    cloud66.com/databaseService: database-service-e9aa2f5c9d5210861a51ca54aa8b9df6 # important, keep this
+  name: #@ cloud66.databaseService.namespace

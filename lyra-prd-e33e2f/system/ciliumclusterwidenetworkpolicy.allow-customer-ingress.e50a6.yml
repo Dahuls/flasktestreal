@@ -1,0 +1,18 @@
+#@ if cloud66.cluster.firewall.customRules:
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-customer-ingress
+spec:
+  description: "Allow customer traffic to specific ports from specific CIDRs"
+  nodeSelector: {} # applies to all nodes
+  ingress:
+    #@ for/end customRule in cloud66.cluster.firewall.customRules:
+    - fromCIDR:
+        - #@ customRule.fromCIDR
+      toPorts:
+        - ports:
+            #@ for/end portProtocol in customRule.portProtocols:
+            - port: #@ portProtocol.port
+              protocol: #@ portProtocol.protocol
+#@ end

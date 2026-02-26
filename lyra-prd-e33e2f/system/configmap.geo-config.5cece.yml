@@ -1,0 +1,46 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: geo-config
+  namespace: c66-cluster-traefik
+  labels:
+    app: geo
+data:
+  geo.yaml: |
+    default: (@= cloud66.cluster.traffic.geo.provider.name @)
+    providers:
+      (@= cloud66.cluster.traffic.geo.provider.name @):
+        enabled: true
+        db:
+          (@ if cloud66.cluster.traffic.geo.provider.dbCountry: @)
+          country: dbs/(@= cloud66.cluster.traffic.geo.provider.dbCountry @)
+          (@ end @)
+          (@ if cloud66.cluster.traffic.geo.provider.dbCity: @)
+          city: dbs/(@= cloud66.cluster.traffic.geo.provider.dbCity @)
+          (@ end @)
+          (@ if cloud66.cluster.traffic.geo.provider.dbAsn: @)
+          asn: dbs/(@= cloud66.cluster.traffic.geo.provider.dbAsn @)
+          (@ end @)
+          (@ if cloud66.cluster.traffic.geo.provider.dbAnonymous: @)
+          anonymous: dbs/(@= cloud66.cluster.traffic.geo.provider.dbAnonymous @)
+          (@ end @)
+        download:
+          enabled: (@= str(cloud66.cluster.traffic.geo.provider.downloadEnabled).lower() @)
+          (@ if cloud66.cluster.traffic.geo.provider.downloadCountryURL: @)
+          country: (@= cloud66.cluster.traffic.geo.provider.downloadCountryURL @)
+          (@ end @)
+          (@ if cloud66.cluster.traffic.geo.provider.downloadCityURL: @)
+          city: (@= cloud66.cluster.traffic.geo.provider.downloadCityURL @)
+          (@ end @)
+          (@ if cloud66.cluster.traffic.geo.provider.downloadAsnURL: @)
+          asn: (@= cloud66.cluster.traffic.geo.provider.downloadAsnURL @)
+          (@ end @)
+          (@ if cloud66.cluster.traffic.geo.provider.downloadAnonymousURL: @)
+          anonymous: (@= cloud66.cluster.traffic.geo.provider.downloadAnonymousURL @)
+          (@ end @)
+    log:
+      format: json
+      level: (@= cloud66.cluster.traffic.geo.logLevel @)
+    cache:
+      enabled: true
+    refresh: 168h

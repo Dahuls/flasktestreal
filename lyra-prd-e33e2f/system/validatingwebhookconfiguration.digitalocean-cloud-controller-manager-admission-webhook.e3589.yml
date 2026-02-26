@@ -1,0 +1,28 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: c66-cluster-digitalocean-ccm/digitalocean-cloud-controller-manager-admission-server-serving-certs
+  name: digitalocean-cloud-controller-manager-admission-webhook
+webhooks:
+- name: validation-webhook.cloud-controller-manager.digitalocean.com
+  admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      namespace: c66-cluster-digitalocean-ccm
+      name: digitalocean-cloud-controller-manager-admission-server
+      path: "/lb-service"
+  failurePolicy: Ignore
+  rules:
+  - apiGroups:
+    - ''
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - services
+    scope: Namespaced
+  sideEffects: None

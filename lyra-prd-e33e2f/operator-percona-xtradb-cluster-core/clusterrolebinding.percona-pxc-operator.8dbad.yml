@@ -1,0 +1,18 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: percona-pxc-operator
+  labels:
+    app.kubernetes.io/name: pxc-operator
+    app.kubernetes.io/instance: percona
+    app.kubernetes.io/version: 1.19.0
+  annotations:
+    cloud66.com/operator: operator-b58813e360581e222938f1007e8b1d18 # important, keep this
+subjects:
+- kind: ServiceAccount
+  name: percona-pxc-operator
+  namespace: c66-cluster-pxc
+roleRef:
+  kind: ClusterRole
+  name: percona-pxc-operator
+  apiGroup: rbac.authorization.k8s.io

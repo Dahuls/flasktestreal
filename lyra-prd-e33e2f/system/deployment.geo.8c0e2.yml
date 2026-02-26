@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geo
+  namespace: c66-cluster-traefik
+  labels:
+    app.kubernetes.io/name: geo
+spec:
+  replicas: #@ cloud66.cluster.traffic.geo.replicas
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: geo
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: geo
+    spec:
+      # spread replicas across nodes for availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: geo
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - image: #@ cloud66.cluster.traffic.geo.image
+        name: geo
+        command:
+        - /app/geo
+        - serve
+        - --config=/etc/config/geo.yaml
+        imagePullPolicy: #@ cloud66.cluster.traffic.geo.imagePullPolicy
+        # liveness probe to restart unhealthy pods
+        livenessProbe:
+          httpGet:
+            path: /_ping
+            port: 9912
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+        # readiness probe to gate traffic until the pod is ready
+        readinessProbe:
+          httpGet:
+            path: /_ping
+            port: 9912
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        # run with a read-only filesystem
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+          readOnly: true
+        # writable volume for downloaded geodb files
+        - name: db-data
+          mountPath: /dbs
+        ports:
+        - containerPort: 9912
+          name: api
+      volumes:
+      - name: config-volume
+        configMap:
+          name: geo-config
+      - name: db-data
+        emptyDir: {}

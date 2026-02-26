@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: digitalocean-cloud-controller-manager-admission-server-serving-certs
+  namespace: c66-cluster-digitalocean-ccm
+spec:
+  dnsNames:
+  - digitalocean-cloud-controller-manager-admission-server
+  - digitalocean-cloud-controller-manager-admission-server.c66-cluster-digitalocean-ccm.svc
+  - digitalocean-cloud-controller-manager-admission-server.c66-cluster-digitalocean-ccm.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: digitalocean-cloud-controller-manager-selfsigned-issuer
+  secretName: digitalocean-cloud-controller-manager-admission-server-serving-certs

@@ -1,0 +1,260 @@
+apiVersion: pxc.percona.com/v1
+kind: PerconaXtraDBCluster
+metadata:
+  name: percona-pxc-db
+  namespace: (@= cloud66.databaseService.namespace @)
+  labels:
+    app.kubernetes.io/name: pxc-db
+    app.kubernetes.io/instance: percona
+    app.kubernetes.io/version: 1.19.0
+  finalizers:
+  - percona.com/delete-pxc-pods-in-order
+  - percona.com/delete-proxysql-pvc
+  - percona.com/delete-pxc-pvc
+  - percona.com/delete-ssl
+  annotations:
+    cloud66.com/databaseService: database-service-e9aa2f5c9d5210861a51ca54aa8b9df6 # important, keep this
+spec:
+  crVersion: 1.19.0
+  enableVolumeExpansion: #@ cloud66.databaseService.enableVolumeExpansion
+  secretsName: cloud66-cluster-credentials
+  sslSecretName: percona-pxc-db-ssl
+  sslInternalSecretName: percona-pxc-db-ssl-internal
+  vaultSecretName: percona-pxc-db-vault
+  logCollectorSecretName: percona-pxc-db-log-collector
+  enableCRValidationWebhook: true
+  pause: false
+  unsafeFlags:
+    proxySize: true
+    pxcSize: true
+  updateStrategy: SmartUpdate
+  upgradeOptions:
+    versionServiceEndpoint: https://check.percona.com
+    apply: disabled
+    schedule: 0 4 * * *
+  tls:
+    enabled: true
+  pxc:
+    size: #@ cloud66.databaseService.instances
+    image: percona/percona-xtradb-cluster:(@= cloud66.databaseService.databaseImageTag @)
+    autoRecovery: true
+    readinessDelaySec: 15
+    livenessDelaySec: 300
+    configuration: |2
+
+      [sst]
+      xbstream-opts=--decompress
+      [xtrabackup]
+      compress=zstd
+      read_buffer_size=100M
+    annotations: {}
+    labels:
+      cloud66.com/databaseService: database-service-e9aa2f5c9d5210861a51ca54aa8b9df6 # important, keep this
+    expose:
+      enabled: false
+    resources:
+      requests:
+        cpu: 600m
+        memory: 1G
+      limits: {}
+    sidecars: []
+    sidecarVolumes: []
+    sidecarPVCs: []
+    sidecarResources:
+      requests: {}
+      limits: {}
+    nodeSelector: {}
+    affinity:
+      advanced:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud66.com/server-pool
+                operator: In
+                values:
+                - (@= cloud66.databaseService.serverPoolLabel @)
+        podAffinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: pxc
+                app.kubernetes.io/name: percona-xtradb-cluster
+            namespaces:
+            - (@= cloud66.databaseService.namespace @)
+            topologyKey: kubernetes.io/hostname
+      antiAffinityTopologyKey: none
+    tolerations: []
+    podDisruptionBudget:
+      maxUnavailable: 1
+    volumeSpec:
+      persistentVolumeClaim:
+        storageClassName: #@ cloud66.databaseService.storageClass
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: #@ cloud66.databaseService.storageSize
+    gracePeriod: 600
+    readinessProbes:
+      failureThreshold: 5
+      initialDelaySeconds: 15
+      periodSeconds: 30
+      successThreshold: 1
+      timeoutSeconds: 15
+    livenessProbes:
+      failureThreshold: 3
+      initialDelaySeconds: 300
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+  haproxy:
+    enabled: true
+    size: #@ cloud66.databaseService.instances
+    image: percona/haproxy:2.8.17
+    exposePrimary:
+      type: ClusterIP
+    exposeReplicas:
+      enabled: true
+      onlyReaders: true
+      type: ClusterIP
+    annotations: {}
+    labels:
+      cloud66.com/databaseService: database-service-e9aa2f5c9d5210861a51ca54aa8b9df6 # important, keep this
+    resources:
+      requests:
+        cpu: 600m
+        memory: 1G
+      limits: {}
+    sidecars: []
+    sidecarVolumes: []
+    sidecarPVCs: []
+    sidecarResources:
+      requests: {}
+      limits: {}
+    nodeSelector: {}
+    affinity:
+      advanced:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud66.com/server-pool
+                operator: In
+                values:
+                - (@= cloud66.databaseService.serverPoolLabel @)
+        podAffinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: haproxy
+                app.kubernetes.io/name: percona-xtradb-cluster
+            namespaces:
+            - (@= cloud66.databaseService.namespace @)
+            topologyKey: kubernetes.io/hostname
+      antiAffinityTopologyKey: none
+    tolerations: []
+    podDisruptionBudget:
+      maxUnavailable: 1
+    volumeSpec:
+      emptyDir: {}
+    gracePeriod: 30
+    readinessDelaySec: 15
+    livenessDelaySec: 300
+    readinessProbes:
+      failureThreshold: 3
+      initialDelaySeconds: 15
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 1
+    livenessProbes:
+      failureThreshold: 4
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      successThreshold: 1
+      timeoutSeconds: 5
+  proxysql:
+    enabled: false
+  logcollector:
+    enabled: false
+  pmm:
+    enabled: false
+  backup:
+    allowParallel: false
+    image: us-east4-docker.pkg.dev/production-911/docker-public/csv3-percona-xtrabackup:(@= cloud66.databaseService.backupImageTag @)
+    backoffLimit: 1
+    ttlSecondsAfterFinished: 3600
+    pitr:
+      enabled: #@ cloud66.databaseService.enablePITR
+      storageName: cloud66-wals
+      timeBetweenUploads: 60
+      timeoutSeconds: 60
+      resources:
+        requests: {}
+        limits: {}
+    storages:
+      cloud66-base:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: cloud66.com/server-pool
+                  operator: In
+                  values:
+                  - (@= cloud66.databaseService.serverPoolLabel @)
+        s3:
+          bucket: #@ cloud66.databaseService.backupBaseBucket
+          credentialsSecret: cloud66-backup-s3-credentials
+          region: #@ cloud66.databaseService.backupRegion
+        type: s3
+        verifyTLS: true
+      cloud66-wals:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: cloud66.com/server-pool
+                  operator: In
+                  values:
+                  - (@= cloud66.databaseService.serverPoolLabel @)
+        s3:
+          bucket: #@ cloud66.databaseService.backupWalsBucket
+          credentialsSecret: cloud66-backup-s3-credentials
+          region: #@ cloud66.databaseService.backupRegion
+        type: s3
+        verifyTLS: true
+    #@ if cloud66.databaseService.scheduledBackups:
+    schedule:
+    #@ for scheduledBackup in cloud66.databaseService.scheduledBackups:
+    - name: #@ scheduledBackup.name
+      retention:
+        type: count
+        count: 100
+        deleteFromStorage: false
+      schedule: #@ scheduledBackup.backupCronString
+      storageName: cloud66-base
+    #@ end
+    #@ end
+  #@ if cloud66.databaseService.users:
+  users:
+  #@ for user in cloud66.databaseService.users:
+  - name: #@ user.username
+    hosts:
+    #@ if user.externalSuperuser:
+    - '%'
+    #@ end
+    #@ if user.localSuperuser:
+    - localhost
+    #@ end
+    grants:
+    - ALL PRIVILEGES
+    withGrantOption: true
+    passwordSecretRef:
+      name: #@ user.passwordSecretName
+      key: password 
+  #@ end
+  #@ end

@@ -1,0 +1,25 @@
+#@ if cloud66.databaseService.recoveryDestination:
+apiVersion: pxc.percona.com/v1
+kind: PerconaXtraDBClusterRestore
+metadata:
+  name: percona-pxc-db-restore
+  namespace: (@= cloud66.databaseService.namespace @)
+  annotations:
+    cloud66.com/databaseService: database-service-e9aa2f5c9d5210861a51ca54aa8b9df6 # important, keep this
+spec:
+  pxcCluster: percona-pxc-db
+  # resources:
+  #   requests:
+  #     memory: 100M
+  #     cpu: 100m
+  #   limits:
+  #     memory: 200M
+  #     cpu: 200m
+  backupSource:
+    verifyTLS: true
+    destination: #@ cloud66.databaseService.recoveryDestination
+    s3:
+      bucket: #@ cloud66.databaseService.recoveryBucket
+      credentialsSecret: cloud66-backup-s3-credentials
+      region: #@ cloud66.databaseService.recoveryRegion
+#@ end

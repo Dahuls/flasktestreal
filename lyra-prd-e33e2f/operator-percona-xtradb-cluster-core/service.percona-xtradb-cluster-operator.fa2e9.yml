@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: percona-xtradb-cluster-operator
+  namespace: c66-cluster-pxc
+  labels:
+    name: percona-xtradb-cluster-operator
+  annotations:
+    cloud66.com/operator: operator-b58813e360581e222938f1007e8b1d18 # important, keep this
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+  selector:
+    app.kubernetes.io/name: pxc-operator
