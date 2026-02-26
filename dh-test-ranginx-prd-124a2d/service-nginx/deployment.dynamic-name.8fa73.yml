@@ -4,6 +4,7 @@ kind: Deployment
 metadata:
   annotations:
     cloud66.com/service: service-64d7e4e6905b3c28361a2cc50eac7c9a # important, keep this
+    blah: whatever
   name: #@ cloud66.service.resourceName
   namespace: #@ cloud66.app.namespace
 spec:
