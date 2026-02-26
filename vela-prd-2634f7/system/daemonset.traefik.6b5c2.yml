@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: traefik
+  namespace: c66-cluster-traefik
+  labels:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/instance: traefik-c66-cluster-traefik
+  annotations:
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+      app.kubernetes.io/instance: traefik-c66-cluster-traefik
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  minReadySeconds: 0
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: #@ str(cloud66.cluster.traffic.controller.metricsPort)
+        prometheus.io/scrape: 'true'
+      labels:
+        app.kubernetes.io/instance: traefik-c66-cluster-traefik
+        app.kubernetes.io/name: traefik
+    spec:
+      automountServiceAccountToken: true
+      containers:
+      - args:
+        - "--global.checkNewVersion=false"
+        - "--api.dashboard=true"
+        - "--ping=true"
+        - "--metrics.prometheus=true"
+        - "--metrics.prometheus.entrypoint=metrics"
+        - "--providers.kubernetescrd"
+        - "--providers.kubernetescrd.allowEmptyServices=true"
+        - "--providers.kubernetesingress"
+        - "--providers.kubernetesingress.allowEmptyServices=true"
+        - "--providers.kubernetesingress.ingressendpoint.publishedservice=c66-cluster-traefik/traefik"
+        - "--entryPoints.websecure.http.tls=true"
+        - "--log.level=INFO"
+        - "--accesslog=true"
+        - "--accesslog.fields.defaultmode=keep"
+        - "--accesslog.fields.headers.defaultmode=drop"
+        - "--experimental.localplugins.maintenance-mode.modulename=github.com/cloud66/traefik-plugin-maintenance-mode"
+        - "--experimental.localplugins.ip-deny-list.modulename=github.com/cloud66/traefik-plugin-ip-deny-list"
+        - "--experimental.localplugins.geo.modulename=github.com/cloud66-oss/traefik-plugin-geo"
+        - "--experimental.localplugins.headers-filter.modulename=github.com/cloud66-oss/traefik-plugin-headers-filter"
+#@ if cloud66.cluster.traffic.ports:
+#@ for port in cloud66.cluster.traffic.ports:
+        - #@ "--entryPoints.%s.address=:%s/%s" % (port.name, port.port, port.protocol)
+#@ end
+#@ end
+        - #@ "--entryPoints.metrics.address=:%s/tcp" % cloud66.cluster.traffic.controller.metricsPort
+        - #@ "--entryPoints.traefik.address=:%s/tcp" % cloud66.cluster.traffic.controller.internalPort
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: USER
+          value: traefik
+        image: docker.io/traefik:v3.6.8
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: "/ping"
+            port: #@ cloud66.cluster.traffic.controller.internalPort
+            scheme: HTTP
+          initialDelaySeconds: 2
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        name: traefik
+        ports: 
+        - name: metrics
+          containerPort: #@ cloud66.cluster.traffic.controller.metricsPort
+          protocol: TCP
+        - name: traefik
+          containerPort: #@ cloud66.cluster.traffic.controller.internalPort
+          protocol: TCP
+#@ if cloud66.cluster.traffic.ports:
+#@ for port in cloud66.cluster.traffic.ports:
+        - name: #@ port.name
+          containerPort: #@ port.port
+          protocol: #@ port.protocol.upper()
+#@ end
+#@ end
+        readinessProbe:
+          failureThreshold: 1
+          httpGet:
+            path: "/ping"
+            port: #@ cloud66.cluster.traffic.controller.internalPort
+            scheme: HTTP
+          initialDelaySeconds: 2
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        resources:
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: "/data"
+          name: data
+        - mountPath: "/tmp"
+          name: tmp
+        - name: plugin-maintenance-mode
+          mountPath: "/plugins-local/src/github.com/cloud66/traefik-plugin-maintenance-mode"
+          readOnly: true
+        - name: plugin-ip-deny-list
+          mountPath: "/plugins-local/src/github.com/cloud66/traefik-plugin-ip-deny-list"
+          readOnly: true
+        - name: plugin-geo
+          mountPath: "/plugins-local/src/github.com/cloud66-oss/traefik-plugin-geo"
+          readOnly: true
+        - name: plugin-headers-filter
+          mountPath: "/plugins-local/src/github.com/cloud66-oss/traefik-plugin-headers-filter"
+          readOnly: true
+      hostNetwork: false
+      securityContext:
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: traefik
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - emptyDir: {}
+        name: data
+      - emptyDir: {}
+        name: tmp
+      - name: plugin-maintenance-mode
+        configMap:
+          name: plugin-maintenance-mode
+      - name: plugin-ip-deny-list
+        configMap:
+          name: plugin-ip-deny-list
+      - name: plugin-geo
+        configMap:
+          name: plugin-geo
+      - name: plugin-headers-filter
+        configMap:
+          name: plugin-headers-filter

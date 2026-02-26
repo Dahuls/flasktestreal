@@ -1,0 +1,25 @@
+#@ if cloud66.cluster.traffic.ports:
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik
+  namespace: c66-cluster-traefik
+  labels:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/instance: traefik-c66-cluster-traefik
+  annotations:
+spec:
+  type: LoadBalancer
+  loadBalancerClass: io.cilium/node
+  externalTrafficPolicy: Local
+  selector:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/instance: traefik-c66-cluster-traefik
+  ports: 
+#@ for port in cloud66.cluster.traffic.ports:
+    - name: #@ port.name
+      port: #@ port.port
+      targetPort: #@ port.name
+      protocol: #@ port.protocol.upper()
+#@ end
+#@ end
