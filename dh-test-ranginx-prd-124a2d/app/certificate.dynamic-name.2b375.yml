@@ -1,0 +1,17 @@
+#@ if cloud66.app.letsEncrypt.httpChallengeDomains:
+#@ for domain in cloud66.app.letsEncrypt.httpChallengeDomains:
+--- # keep
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: #@ domain.secretName
+  namespace: #@ cloud66.app.namespace
+spec:
+  secretName: #@ domain.secretName
+  dnsNames:
+  - #@ domain.dnsName
+  issuerRef:
+    name: letsencrypt-issuer-ingress
+    kind: ClusterIssuer
+#@ end
+#@ end

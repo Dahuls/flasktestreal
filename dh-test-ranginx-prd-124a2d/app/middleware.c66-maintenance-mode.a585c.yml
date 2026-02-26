@@ -1,0 +1,13 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: c66-maintenance-mode
+  namespace: #@ cloud66.app.namespace
+spec:
+  plugin:
+    maintenance-mode:
+      enabled: #@ cloud66.app.middlewares.maintenanceMode.enabled
+      debug: #@ cloud66.app.middlewares.maintenanceMode.debug
+      placeholderURL: #@ cloud66.app.middlewares.maintenanceMode.placeholderURL
+      healthPathRegex: #@ cloud66.app.middlewares.maintenanceMode.healthPathRegex
+      bypassHeader: #@ cloud66.app.middlewares.maintenanceMode.bypassHeader
