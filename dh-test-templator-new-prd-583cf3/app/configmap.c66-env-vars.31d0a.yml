@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: #@ cloud66.app.namespace
+  name: c66-env-vars
+data:
+  #@ for/end envVar in cloud66.app.envVars:
+  (@= envVar.key @): (@= envVar.value @)
