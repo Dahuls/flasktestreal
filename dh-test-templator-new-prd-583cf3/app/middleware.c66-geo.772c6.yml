@@ -1,0 +1,13 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: c66-geo
+  namespace: #@ cloud66.app.namespace
+spec:
+  plugin:
+    geo:
+      enabled: #@ cloud66.app.middlewares.geo.enabled
+      debug: #@ cloud66.app.middlewares.geo.debug
+      includeCountryHeaders: true
+      includeCityHeaders: false
+      includeASNHeaders: false

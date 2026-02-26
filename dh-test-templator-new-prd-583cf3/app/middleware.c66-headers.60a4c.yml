@@ -1,0 +1,15 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: c66-headers
+  namespace: #@ cloud66.app.namespace
+spec:
+  #@ if cloud66.app.middlewares.headers:
+  headers:
+    customResponseHeaders:
+      #@ for/end header in cloud66.app.middlewares.headers:
+      (@= header.key @): (@= header.value @)
+  #@ else:
+  rateLimit:
+    average: 0 # noop placeholder
+  #@ end
