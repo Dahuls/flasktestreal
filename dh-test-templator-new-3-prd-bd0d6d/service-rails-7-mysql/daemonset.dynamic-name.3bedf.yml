@@ -1,0 +1,70 @@
+#@ if cloud66.service.kind == "DaemonSet":
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+    cloud66.com/service: service-cba5fd33be50f2663846602cb718cee0 # important, keep this
+  name: #@ cloud66.service.resourceName
+  namespace: #@ cloud66.app.namespace
+spec:
+  selector:
+    matchLabels:
+      app: #@ cloud66.service.resourceName
+  template:
+    metadata:
+      annotations:
+        cloud66.com/service: service-cba5fd33be50f2663846602cb718cee0 # important, keep this
+        cloud66.com/restart-trigger: #@ cloud66.service.restartTrigger
+      labels:
+        app: #@ cloud66.service.resourceName
+    spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      #@ if/end cloud66.service.serverPoolLabels:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: cloud66.com/server-pool
+                    operator: In
+                    values:
+                      #@ for/end serverPoolLabel in cloud66.service.serverPoolLabels:
+                      - #@ serverPoolLabel
+      containers:
+        - name: #@ cloud66.service.resourceName
+          image: #@ cloud66.service.image
+          #@ if/end cloud66.service.commands:
+          command:
+            #@ for/end command in cloud66.service.commands:
+            - #@ command
+          #@ if/end cloud66.service.args:
+          args:
+            #@ for/end arg in cloud66.service.args:
+            - #@ arg
+          envFrom:
+            - configMapRef:
+                name: c66-env-vars
+            - secretRef:
+                name: c66-secrets
+          #@ if/end cloud66.service.volumeInfos:
+          volumeMounts:
+            #@ for/end volumeInfo in cloud66.service.volumeInfos:
+            - name: #@ volumeInfo.name
+              mountPath: #@ volumeInfo.mountPath
+              mountPropagation: #@ volumeInfo.mountPropagation
+              readOnly: #@ volumeInfo.readOnly
+              #@ if/end volumeInfo.subPath:
+              subPath: #@ volumeInfo.subPath
+      #@ if/end cloud66.service.volumeInfos:
+      volumes:
+        #@ for/end volumeInfo in cloud66.service.volumeInfos:
+        - name: #@ volumeInfo.name
+          #@ if volumeInfo.pvcName:
+          persistentVolumeClaim:
+            claimName: #@ volumeInfo.pvcName
+          #@ elif volumeInfo.emptyDir:
+          emptyDir: #@ json.decode(volumeInfo.emptyDir)
+          #@ end
+#@ end

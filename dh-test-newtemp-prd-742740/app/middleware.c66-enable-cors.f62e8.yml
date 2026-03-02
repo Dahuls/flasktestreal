@@ -1,0 +1,24 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: c66-enable-cors
+  namespace: #@ cloud66.app.namespace
+spec:
+  #@ if cloud66.app.middlewares.CORS.enabled:
+  headers:
+    accessControlAllowOriginList:
+      #@ for/end allowOrigin in cloud66.app.middlewares.CORS.allowOriginList:
+      - #@ allowOrigin
+    accessControlAllowMethods:
+      #@ for/end allowMethod in cloud66.app.middlewares.CORS.allowMethods:
+      - #@ allowMethod
+    accessControlAllowHeaders:
+      #@ for/end allowHeader in cloud66.app.middlewares.CORS.allowHeaders:
+      - #@ allowHeader
+    accessControlMaxAge: #@ cloud66.app.middlewares.CORS.maxAge
+    addVaryHeader: #@ cloud66.app.middlewares.CORS.varyHeader
+    accessControlAllowCredentials: #@ cloud66.app.middlewares.CORS.allowCredentials
+  #@ else:
+  rateLimit:
+    average: 0 # noop placeholder
+  #@ end
