@@ -1,0 +1,13 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: c66-ip-deny-list
+  namespace: #@ cloud66.app.namespace
+spec:
+  plugin:
+    ip-deny-list:
+      enabled: #@ cloud66.app.middlewares.ipDenyList.enabled
+      debug: #@ cloud66.app.middlewares.ipDenyList.debug
+      sourceRange:
+      #@ for/end ip in cloud66.app.middlewares.ipDenyList.ips:
+      - #@ ip
